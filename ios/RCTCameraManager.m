@@ -236,12 +236,12 @@ RCT_EXPORT_METHOD(stopCapture) {
 #if TARGET_IPHONE_SIMULATOR
   return;
 #endif
-	
+
   dispatch_async(self.sessionQueue, ^{
     if (self.presetCamera == AVCaptureDevicePositionUnspecified) {
       self.presetCamera = AVCaptureDevicePositionBack;
     }
-    
+
     AVCaptureStillImageOutput *stillImageOutput = [[AVCaptureStillImageOutput alloc] init];
     if ([self.session canAddOutput:stillImageOutput])
     {
@@ -249,14 +249,14 @@ RCT_EXPORT_METHOD(stopCapture) {
       [self.session addOutput:stillImageOutput];
       self.stillImageOutput = stillImageOutput;
     }
-    
+
     AVCaptureMovieFileOutput *movieFileOutput = [[AVCaptureMovieFileOutput alloc] init];
     if ([self.session canAddOutput:movieFileOutput])
     {
       [self.session addOutput:movieFileOutput];
       self.movieFileOutput = movieFileOutput;
     }
-    
+
     AVCaptureMetadataOutput *metadataOutput = [[AVCaptureMetadataOutput alloc] init];
     if ([self.session canAddOutput:metadataOutput]) {
       [metadataOutput setMetadataObjectsDelegate:self queue:self.sessionQueue];
@@ -264,7 +264,7 @@ RCT_EXPORT_METHOD(stopCapture) {
       [metadataOutput setMetadataObjectTypes:metadataOutput.availableMetadataObjectTypes];
       self.metadataOutput = metadataOutput;
     }
-    
+
     __weak RCTCameraManager *weakSelf = self;
     [self setRuntimeErrorHandlingObserver:[NSNotificationCenter.defaultCenter addObserverForName:AVCaptureSessionRuntimeErrorNotification object:self.session queue:nil usingBlock:^(NSNotification *note) {
       RCTCameraManager *strongSelf = weakSelf;
@@ -273,7 +273,7 @@ RCT_EXPORT_METHOD(stopCapture) {
         [strongSelf.session startRunning];
       });
     }]];
-    
+
     [self.session startRunning];
   });
 }
@@ -282,7 +282,7 @@ RCT_EXPORT_METHOD(stopCapture) {
 #if TARGET_IPHONE_SIMULATOR
   return;
 #endif
-	
+
   dispatch_async(self.sessionQueue, ^{
     self.camera = nil;
     [self.previewLayer removeFromSuperlayer];
@@ -290,7 +290,7 @@ RCT_EXPORT_METHOD(stopCapture) {
     for(AVCaptureInput *input in self.session.inputs) {
       [self.session removeInput:input];
     }
-    
+
     for(AVCaptureOutput *output in self.session.outputs) {
       [self.session removeOutput:output];
     }
@@ -299,19 +299,19 @@ RCT_EXPORT_METHOD(stopCapture) {
 
 - (void)initializeCaptureSessionInput:(NSString *)type {
   dispatch_async(self.sessionQueue, ^{
-    
+
     [self.session beginConfiguration];
-    
+
     NSError *error = nil;
     AVCaptureDevice *captureDevice;
-    
+
     if (type == AVMediaTypeAudio) {
       captureDevice = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeAudio];
     }
     else if (type == AVMediaTypeVideo) {
       captureDevice = [self deviceWithMediaType:AVMediaTypeVideo preferringPosition:self.presetCamera];
     }
-    
+
     if (captureDevice == nil) {
       return;
     }
@@ -352,8 +352,23 @@ RCT_EXPORT_METHOD(stopCapture) {
 #if TARGET_IPHONE_SIMULATOR
       CGSize size = CGSizeMake(720, 1280);
       UIGraphicsBeginImageContextWithOptions(size, YES, 0);
-        [[UIColor whiteColor] setFill];
+        // Thanks https://gist.github.com/kylefox/1689973
+        CGFloat hue = ( arc4random() % 256 / 256.0 );  //  0.0 to 1.0
+        CGFloat saturation = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from white
+        CGFloat brightness = ( arc4random() % 128 / 256.0 ) + 0.5;  //  0.5 to 1.0, away from black
+        UIColor *color = [UIColor colorWithHue:hue saturation:saturation brightness:brightness alpha:1];
+        [color setFill];
         UIRectFill(CGRectMake(0, 0, size.width, size.height));
+        NSDate *currentDate = [NSDate date];
+        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+        [dateFormatter setDateFormat:@"dd.MM.YY HH:mm:ss"];
+        NSString *text = [dateFormatter stringFromDate:currentDate];
+        UIFont *font = [UIFont systemFontOfSize:40.0];
+        NSDictionary *attributes = [NSDictionary dictionaryWithObjects:
+                                    @[font, [UIColor blackColor]]
+                                                               forKeys:
+                                    @[NSFontAttributeName, NSForegroundColorAttributeName]];
+        [text drawAtPoint:CGPointMake(size.width/3, size.height/2) withAttributes:attributes];
         UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
       UIGraphicsEndImageContext();
 
